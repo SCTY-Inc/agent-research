@@ -10,6 +10,54 @@ from rich.console import Console
 load_dotenv()
 console = Console()
 
+CLARIFYING_PROMPT = """
+If the user hasn't specifically asked for research, ask them what research they would like you to do.
+
+GUIDELINES:
+1. **Be concise while gathering all necessary information** Ask 2–3 clarifying questions to gather more context for research.
+   - Make sure to gather all the information needed to carry out the research task in a concise, well-structured manner. Use bullet points or numbered lists if appropriate for clarity. Don't ask for unnecessary information, or information that the user has already provided.
+2. **Maintain a Friendly and Non-Condescending Tone**
+   - For example, instead of saying "I need a bit more detail on Y," say, "Could you share more detail on Y?"
+3. **Adhere to Safety Guidelines**
+"""
+
+RESEARCH_PROMPT = """
+Based on the following guidelines, take the users query, and rewrite it into detailed research instructions. OUTPUT ONLY THE RESEARCH INSTRUCTIONS, NOTHING ELSE.
+
+GUIDELINES:
+1. **Maximize Specificity and Detail**
+   - Include all known user preferences and explicitly list key attributes or dimensions to consider.
+   - It is of utmost importance that all details from the user are included in the expanded prompt.
+
+2. **Fill in Unstated But Necessary Dimensions as Open-Ended**
+   - If certain attributes are essential for a meaningful output but the user has not provided them, explicitly state that they are open-ended or default to "no specific constraint."
+
+3. **Avoid Unwarranted Assumptions**
+   - If the user has not provided a particular detail, do not invent one.
+   - Instead, state the lack of specification and guide the deep research model to treat it as flexible or accept all possible options.
+
+4. **Use the First Person**
+   - Phrase the request from the perspective of the user.
+
+5. **Tables**
+   - If you determine that including a table will help illustrate, organize, or enhance the information in your deep research output, you must explicitly request that the deep research model provide them.
+
+6. **Headers and Formatting**
+   - You should include the expected output format in the prompt.
+   - If the user is asking for content that would be best returned in a structured format (e.g. a report, plan, etc.), ask the Deep Research model to "Format as a report with the appropriate headers and formatting that ensures clarity and structure."
+
+7. **Language**
+   - If the user input is in a language other than English, tell the model to respond in this language, unless the user query explicitly asks for the response in a different language.
+
+8. **Sources**
+   - If specific sources should be prioritized, specify them in the prompt.
+   - For product and travel research, prefer linking directly to official or primary websites rather than aggregator sites.
+   - For academic or scientific queries, prefer linking directly to the original paper or official journal publication.
+   - If the query is in a specific language, prioritize sources published in that language.
+
+IMPORTANT: SPECIFY REQUIRED OUTPUT LANGUAGE IN THE PROMPT
+"""
+
 # Structured output models
 class TriageResponse(BaseModel): needs_clarification: bool
 class ClarifyResponse(BaseModel): questions: List[str]
@@ -19,9 +67,9 @@ BASE_MODEL = OpenAIChat(id="gpt-4o-mini", api_key=os.getenv("OPENAI_API_KEY"))
 RESEARCH_MODEL = OpenAIResponses(id="o3-deep-research-2025-06-26", api_key=os.getenv("OPENAI_API_KEY"))
 
 agents = {
-    'triage': Agent(model=BASE_MODEL, instructions="Analyze if the research query needs clarification.", response_model=TriageResponse, structured_outputs=True),
-    'clarify': Agent(model=BASE_MODEL, instructions="Generate 2-3 specific clarifying questions.", response_model=ClarifyResponse, structured_outputs=True),
-    'research': Agent(model=RESEARCH_MODEL, instructions="Perform deep empirical research based on the user's instructions.", tools=[{"type": "web_search_preview"}], markdown=True)
+    'triage': Agent(model=BASE_MODEL, instructions="Analyze if the research query needs clarification to provide comprehensive research.", response_model=TriageResponse, structured_outputs=True),
+    'clarify': Agent(model=BASE_MODEL, instructions=CLARIFYING_PROMPT, response_model=ClarifyResponse, structured_outputs=True),
+    'research': Agent(model=RESEARCH_MODEL, instructions=RESEARCH_PROMPT, tools=[{"type": "web_search_preview"}], markdown=True)
 }
 
 
