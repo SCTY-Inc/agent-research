@@ -21,7 +21,7 @@ GUIDELINES:
 3. **Adhere to Safety Guidelines**
 """
 
-RESEARCH_PROMPT = """
+INSTRUCTION_PROMPT = """
 Based on the following guidelines, take the users query, and rewrite it into detailed research instructions. OUTPUT ONLY THE RESEARCH INSTRUCTIONS, NOTHING ELSE.
 
 GUIDELINES:
@@ -58,9 +58,25 @@ GUIDELINES:
 IMPORTANT: SPECIFY REQUIRED OUTPUT LANGUAGE IN THE PROMPT
 """
 
+RESEARCH_PROMPT = "Use the detailed research instructions provided to conduct comprehensive research with web search capabilities."
+
+SYSTEM_MESSAGE = """
+You are a professional researcher preparing a structured, data-driven report on behalf of a global research team. Your task is to analyze the research question the user poses.
+
+Do:
+- Focus on data-rich insights: include specific figures, trends, statistics, and measurable outcomes (e.g., market size, pricing trends, adoption rates, performance metrics).
+- When appropriate, summarize data in a way that could be turned into charts or tables, and call this out in the response (e.g., "this would work well as a bar chart comparing costs across regions").
+- Prioritize reliable, up-to-date sources: peer-reviewed research, authoritative organizations, regulatory agencies, or official reports.
+- Include inline citations and return all source metadata.
+- Structure findings with clear headers and logical flow.
+
+Be analytical, avoid generalities, and ensure that each section supports data-backed reasoning that could inform decision-making or strategic planning.
+"""
+
 # Structured output models
 class TriageResponse(BaseModel): needs_clarification: bool
 class ClarifyResponse(BaseModel): questions: List[str]
+class InstructionResponse(BaseModel): instructions: str
 
 # Models and agents
 BASE_MODEL = OpenAIChat(id="gpt-4o-mini", api_key=os.getenv("OPENAI_API_KEY"))
@@ -69,7 +85,8 @@ RESEARCH_MODEL = OpenAIResponses(id="o3-deep-research-2025-06-26", api_key=os.ge
 agents = {
     'triage': Agent(model=BASE_MODEL, instructions="Analyze if the research query needs clarification to provide comprehensive research.", response_model=TriageResponse, structured_outputs=True),
     'clarify': Agent(model=BASE_MODEL, instructions=CLARIFYING_PROMPT, response_model=ClarifyResponse, structured_outputs=True),
-    'research': Agent(model=RESEARCH_MODEL, instructions=RESEARCH_PROMPT, tools=[{"type": "web_search_preview"}], markdown=True)
+    'instruction': Agent(model=BASE_MODEL, instructions=INSTRUCTION_PROMPT, response_model=InstructionResponse, structured_outputs=True),
+    'research': Agent(model=RESEARCH_MODEL, instructions=RESEARCH_PROMPT, system_message=SYSTEM_MESSAGE, tools=[{"type": "web_search_preview"}], markdown=True)
 }
 
 
@@ -109,7 +126,7 @@ async def handle_clarification(query):
     return f"{query}\n\nContext:\n" + "\n".join(answers) if answers else query
 
 async def research_pipeline(query):
-    """Optimized research pipeline with structured outputs"""
+    """Complete 4-agent pipeline: Triage → Clarify → Instruction → Research"""
     print(f"🔬 Deep Research: {query}\n")
     
     # Triage and conditional clarification
@@ -119,9 +136,14 @@ async def research_pipeline(query):
     if triage_result.content.needs_clarification:
         query = await handle_clarification(query)
     
-    # Research
+    # Generate detailed research instructions
+    print("📋 Creating research instructions...")
+    instruction_result = await asyncio.to_thread(agents['instruction'].run, query)
+    instructions = instruction_result.content.instructions
+    
+    # Research with detailed instructions
     with console.status("🔬 Conducting deep research... (2-3 minutes)", spinner="dots"):
-        result = await asyncio.to_thread(agents['research'].run, query)
+        result = await asyncio.to_thread(agents['research'].run, instructions)
     
     return result
 

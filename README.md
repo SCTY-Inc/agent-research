@@ -4,7 +4,7 @@ A professional-grade implementation of OpenAI's Deep Research API cookbook examp
 
 ## Features
 
-- **Multi-Agent Pipeline**: Triage → Clarification → Deep Research
+- **Multi-Agent Pipeline**: Triage → Clarification → Instruction → Deep Research
 - **Professional Prompts**: OpenAI cookbook-grade prompting for superior research quality
 - **Structured Outputs**: Type-safe Pydantic models eliminate regex parsing
 - **Citation Support**: Extracts and displays sources from research results
@@ -36,7 +36,7 @@ python main.py
 
 ## Implementation Highlights
 
-### Current Architecture (161 lines)
+### Current Architecture (165 lines)
 
 ```python
 # Professional prompts from OpenAI cookbook
@@ -52,10 +52,12 @@ formatting, language handling, and source prioritization...
 # Structured output models
 class TriageResponse(BaseModel): needs_clarification: bool
 class ClarifyResponse(BaseModel): questions: List[str]
+class InstructionResponse(BaseModel): instructions: str
 
 # Type-safe agent configuration with professional prompts
 'triage': Agent(model=BASE_MODEL, response_model=TriageResponse, structured_outputs=True)
 'clarify': Agent(model=BASE_MODEL, instructions=CLARIFYING_PROMPT, response_model=ClarifyResponse, structured_outputs=True)
+'instruction': Agent(model=BASE_MODEL, instructions=INSTRUCTION_PROMPT, response_model=InstructionResponse, structured_outputs=True)
 'research': Agent(model=RESEARCH_MODEL, instructions=RESEARCH_PROMPT, tools=[{"type": "web_search_preview"}], markdown=True)
 
 # Elegant pipeline with function separation
@@ -64,7 +66,9 @@ async def handle_clarification(query):
     
 async def research_pipeline(query):
     if triage_result.content.needs_clarification:
-        query = await handle_clarification(query)  # Clean!
+        query = await handle_clarification(query)
+    instructions = await agents['instruction'].run(query)  # Generate detailed instructions
+    result = await agents['research'].run(instructions)  # Research with instructions
 ```
 
 ### Key Optimizations
@@ -119,8 +123,10 @@ async def research_pipeline(query):
 
 ### Before vs After
 
-**Original OpenAI Cookbook**: 139 lines with manual string parsing
-**Current Implementation**: 161 lines with professional prompts and structured outputs
+**Original OpenAI Cookbook**: 139 lines with manual string parsing  
+**Reference**: https://cookbook.openai.com/examples/deep_research_api/introduction_to_deep_research_api_agents
+
+**Current Implementation**: 165 lines with complete 4-agent pipeline and structured outputs
 
 **Key Improvements**:
 - ✅ **Professional-grade prompting** from OpenAI cookbook for superior research quality
@@ -177,7 +183,7 @@ python -c "from main import TriageResponse; print('✅ Pydantic models working')
 ## Contributing
 
 1. Maintain structured output patterns
-2. Preserve the 3-agent pipeline architecture
+2. Preserve the 4-agent pipeline architecture (Triage → Clarify → Instruction → Research)
 3. Keep citation functionality intact
 4. Test with diverse research topics
 5. Follow type-safe practices with Pydantic
@@ -188,7 +194,12 @@ MIT License - See original OpenAI cookbook for reference implementation.
 
 ## Acknowledgments
 
-- OpenAI Deep Research API cookbook examples
-- Agno 1.7.0 framework for structured agent orchestration
-- Rich library for enhanced console UI
-- Pydantic for robust data validation
+- **OpenAI Deep Research API cookbook examples**: https://cookbook.openai.com/examples/deep_research_api/introduction_to_deep_research_api_agents
+- **Agno 1.7.0 framework** for structured agent orchestration
+- **Rich library** for enhanced console UI
+- **Pydantic** for robust data validation
+
+## References
+
+- [OpenAI Deep Research API with Agents](https://cookbook.openai.com/examples/deep_research_api/introduction_to_deep_research_api_agents) - Original cookbook implementation
+- [OpenAI Deep Research API Introduction](https://cookbook.openai.com/examples/deep_research_api/introduction_to_deep_research_api) - API overview
