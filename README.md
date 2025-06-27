@@ -1,10 +1,11 @@
 # Deep Research Agent with Agno 1.7.0
 
-A highly optimized implementation of OpenAI's Deep Research API cookbook examples using Agno 1.7.0 framework. Features structured outputs, citation support, and elegant code architecture.
+A professional-grade implementation of OpenAI's Deep Research API cookbook examples using Agno 1.7.0 framework. Features the same sophisticated prompting, structured outputs, citation support, and elegant code architecture.
 
 ## Features
 
 - **Multi-Agent Pipeline**: Triage → Clarification → Deep Research
+- **Professional Prompts**: OpenAI cookbook-grade prompting for superior research quality
 - **Structured Outputs**: Type-safe Pydantic models eliminate regex parsing
 - **Citation Support**: Extracts and displays sources from research results
 - **Tiered Models**: Uses `o3-deep-research-2025-06-26` for research and `gpt-4o-mini` for coordination
@@ -35,16 +36,27 @@ python main.py
 
 ## Implementation Highlights
 
-### Current Architecture
+### Current Architecture (161 lines)
 
 ```python
+# Professional prompts from OpenAI cookbook
+CLARIFYING_PROMPT = """
+Guidelines for concise, friendly clarification questions...
+"""
+
+RESEARCH_PROMPT = """
+Guidelines for detailed research instructions with tables, 
+formatting, language handling, and source prioritization...
+"""
+
 # Structured output models
 class TriageResponse(BaseModel): needs_clarification: bool
 class ClarifyResponse(BaseModel): questions: List[str]
 
-# Type-safe agent configuration
+# Type-safe agent configuration with professional prompts
 'triage': Agent(model=BASE_MODEL, response_model=TriageResponse, structured_outputs=True)
-'clarify': Agent(model=BASE_MODEL, response_model=ClarifyResponse, structured_outputs=True)
+'clarify': Agent(model=BASE_MODEL, instructions=CLARIFYING_PROMPT, response_model=ClarifyResponse, structured_outputs=True)
+'research': Agent(model=RESEARCH_MODEL, instructions=RESEARCH_PROMPT, tools=[{"type": "web_search_preview"}], markdown=True)
 
 # Elegant pipeline with function separation
 async def handle_clarification(query):
@@ -57,12 +69,13 @@ async def research_pipeline(query):
 
 ### Key Optimizations
 
-1. **Structured Outputs**: Replaced regex parsing with Pydantic models
-2. **Function Separation**: Extracted clarification logic for better maintainability  
-3. **Type Safety**: Full validation of agent responses
-4. **Citation Extraction**: Handles both OpenAI and MCP citation formats
-5. **Elegant Control Flow**: Clean conditional logic with early returns
-6. **Organized Output**: Auto-creates `/reports/` directory for all research files
+1. **Professional Prompts**: OpenAI cookbook-grade instructions for superior research quality
+2. **Structured Outputs**: Replaced regex parsing with Pydantic models
+3. **Function Separation**: Extracted clarification logic for better maintainability  
+4. **Type Safety**: Full validation of agent responses
+5. **Citation Extraction**: Handles both OpenAI and MCP citation formats
+6. **Elegant Control Flow**: Clean conditional logic with early returns
+7. **Organized Output**: Auto-creates `/reports/` directory for all research files
 
 ### Models Used
 
@@ -107,10 +120,10 @@ async def research_pipeline(query):
 ### Before vs After
 
 **Original OpenAI Cookbook**: 139 lines with manual string parsing
-**Current Implementation**: 114 lines with structured outputs
+**Current Implementation**: 161 lines with professional prompts and structured outputs
 
 **Key Improvements**:
-- ✅ **18% fewer lines** than original OpenAI cookbook (139→114)
+- ✅ **Professional-grade prompting** from OpenAI cookbook for superior research quality
 - ✅ **Type-safe responses** with Pydantic validation
 - ✅ **No regex parsing** - eliminated fragile string operations
 - ✅ **Better separation of concerns** with dedicated functions
